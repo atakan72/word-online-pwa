@@ -10,34 +10,108 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: #2B579A;
       min-height: 100vh;
+      background: linear-gradient(160deg, #2B579A 0%, #1a3a6b 100%);
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      color: #fff;
+      color: #fff; text-align: center; padding: 40px 24px;
     }
+    .logo {
+      width: 88px; height: 88px;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 22px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3rem; font-weight: 800;
+      margin-bottom: 28px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+    .sub { opacity: 0.7; font-size: 0.95rem; margin-bottom: 44px; line-height: 1.5; }
+    .btn {
+      display: block; width: 100%; max-width: 280px;
+      padding: 14px 28px; border-radius: 10px;
+      font-size: 1rem; font-weight: 600; cursor: pointer;
+      border: none; text-decoration: none;
+      margin: 0 auto 12px; transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn:hover  { opacity: 0.9; }
+    #installBtn { background: #fff; color: #2B579A; display: none; }
+    #installBtn.visible { display: block; }
+    #openBtn {
+      background: rgba(255,255,255,0.18); color: #fff;
+      border: 1px solid rgba(255,255,255,0.35);
+    }
+    .status { margin-top: 24px; font-size: 0.78rem; opacity: 0.55; max-width: 260px; line-height: 1.6; }
     .spinner {
-      width: 36px; height: 36px;
-      border: 3px solid rgba(255,255,255,0.25);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 0.75s linear infinite;
-      margin-bottom: 18px;
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 6px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    p { opacity: 0.7; font-size: 0.95rem; }
   </style>
 </head>
 <body>
-  <div class="spinner"></div>
-  <p>Word Online wird geöffnet…</p>
+  <div class="logo">W</div>
+  <h1>Word Online</h1>
+  <p class="sub">Installiere Word als Desktop-App<br>oder öffne es direkt im Browser.</p>
+
+  <button id="installBtn" class="btn">&#11015;&nbsp; Als App installieren</button>
+  <a     id="openBtn"    class="btn" href="https://word.cloud.microsoft/" target="_self">Word öffnen &rarr;</a>
+
+  <p class="status" id="status"><span class="spinner"></span>Prüfe…</p>
+
   <script>
+    const TARGET = 'https://word.cloud.microsoft/';
+
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
+      navigator.serviceWorker.register('sw.js').catch(function() {});
     }
-    // Redirect to target — stays in standalone window
-    window.location.replace("https://word.cloud.microsoft");
+
+    // Already installed and running as PWA → redirect immediately
+    var isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
+
+    if (isStandalone) {
+      window.location.replace(TARGET);
+    }
+
+    var deferredPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('installBtn').classList.add('visible');
+      document.getElementById('status').textContent = 'Bereit zur Installation.';
+    });
+
+    document.getElementById('installBtn').addEventListener('click', function() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function(result) {
+        deferredPrompt = null;
+        document.getElementById('installBtn').classList.remove('visible');
+        document.getElementById('status').textContent =
+          result.outcome === 'accepted'
+            ? 'Installiert! App im Startmenu suchen.'
+            : '';
+      });
+    });
+
+    window.addEventListener('appinstalled', function() {
+      document.getElementById('status').textContent = 'App installiert!';
+    });
+
+    setTimeout(function() {
+      var s = document.getElementById('status');
+      if (s.textContent.includes('fe')) {
+        s.textContent = 'Tipp: Seite in Chrome oder Edge öffnen für den Installations-Button.';
+      }
+    }, 3000);
   </script>
 </body>
 </html>
