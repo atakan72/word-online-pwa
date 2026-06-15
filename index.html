@@ -65,18 +65,19 @@
   <p class="status" id="status"><span class="spinner"></span>Prüfe…</p>
 
   <script>
-    const TARGET = 'https://word.cloud.microsoft/';
+    var TARGET = 'https://word.cloud.microsoft/';
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(function() {});
     }
 
-    // Already installed and running as PWA → redirect immediately
+    // Only redirect if BOTH: running as installed PWA AND user has clicked install before
     var isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       window.navigator.standalone === true;
+    var wasInstalled = localStorage.getItem('pwa-installed') === 'true';
 
-    if (isStandalone) {
+    if (isStandalone && wasInstalled) {
       window.location.replace(TARGET);
     }
 
@@ -95,14 +96,17 @@
       deferredPrompt.userChoice.then(function(result) {
         deferredPrompt = null;
         document.getElementById('installBtn').classList.remove('visible');
-        document.getElementById('status').textContent =
-          result.outcome === 'accepted'
-            ? 'Installiert! App im Startmenu suchen.'
-            : '';
+        if (result.outcome === 'accepted') {
+          localStorage.setItem('pwa-installed', 'true');
+          document.getElementById('status').textContent = 'Installiert! App im Startmenu suchen.';
+        } else {
+          document.getElementById('status').textContent = '';
+        }
       });
     });
 
     window.addEventListener('appinstalled', function() {
+      localStorage.setItem('pwa-installed', 'true');
       document.getElementById('status').textContent = 'App installiert!';
     });
 
